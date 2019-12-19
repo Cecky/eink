@@ -25,6 +25,7 @@
 int main(void)
 {
   uint8_t cmd = 0;
+  eink_init();
   i2c_init();
   uart_init();
   tps65185_init();
@@ -44,11 +45,36 @@ int main(void)
         tps65185_get_status();
 
       if(cmd == '0')
-        eink_powerdown();;
+      {
+        eink_powerdown();
+        printf("PowerDown\r\n");
+      }
 
       if(cmd == '1')
+      {
         eink_powerup();
-
+        printf("PowerUp\r\n");
+      }
+      
+      if(cmd == '2')
+      {
+        printf("Set some pixels\r\n");
+        if(eink_powerup()) 
+        {
+          printf("i2c error occured\r\naborteed\r\n");
+          eink_powerdown();
+        }
+        else
+        {
+          printf("PowerUp\r\n");
+          _delay_ms(1);
+          set_pixels();
+          _delay_ms(1);
+          eink_powerdown();
+          printf("PowerDown\r\n");
+          printf("Done\r\n");
+        }
+      }
     }
   }
 }

@@ -45,7 +45,8 @@
 #define DDR_XOE     DDRA
 #define XOE         PA2
 #define SET_XOE     PORT_XOE |= (1<<XOE)
-#define CLR_XOE     PORT_XOE &= ~(1<<XOE)
+//#define CLR_XOE     PORT_XOE &= ~(1<<XOE)
+#define CLR_XOE     PORT_XOE |= (1<<XOE)
 
 #define PORT_XSTL   PORTA
 #define DDR_XSTL    DDRA
@@ -169,3 +170,10 @@ void hscan_write(const uint8_t *data, int count);
 /* Finish and transfer the row to the source drivers.
  * Does not set the output enable, so the drivers are not yet active. */
 void hscan_stop();
+
+
+
+
+
+
+void set_pixels();

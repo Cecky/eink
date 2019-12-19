@@ -2,7 +2,8 @@
 
 void tps65185_init(void)
 {
-  DDR_PWRUP |= (1<<PIN_PWRUP);
+  DDR_PWRUP |= (1 << PIN_PWRUP);
+  DDR_VCOM |= (1 << PIN_VCOM);
   TPS_POWERDOWN;
 }
 

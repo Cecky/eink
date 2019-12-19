@@ -8,8 +8,14 @@
 #define PORT_PWRUP          PORTC
 #define DDR_PWRUP           DDRC
 #define PIN_PWRUP           PC2
-#define TPS_POWERUP         (PORT_PWRUP |= (1<<PIN_PWRUP))
-#define TPS_POWERDOWN       (PORT_PWRUP &= ~(1<<PIN_PWRUP))
+#define TPS_POWERUP         PORT_PWRUP |= (1<<PIN_PWRUP)
+#define TPS_POWERDOWN       PORT_PWRUP &= ~(1<<PIN_PWRUP)
+
+#define PORT_VCOM           PORTC
+#define DDR_VCOM            DDRC
+#define PIN_VCOM            PC3
+#define VCOM_ON             PORT_VCOM |= (1<<PIN_VCOM)
+#define VCOM_OFF            PORT_VCOM &= ~(1<<PIN_VCOM)
 
 //Register Map
 #define TMST_VALUE          0x00

@@ -51,7 +51,7 @@ void eink_init(void)
   CLR_XSTL;
   eink_set_data(0);
   CLR_CKV;
-  CLR_MODE;
+  SET_MODE;
 }
 
 /******************************************************************************
@@ -102,14 +102,29 @@ int8_t eink_powerup(void)
   SET_XSTL;
   eink_set_data(0);
   CLR_CKV;
-  CLR_MODE;
+  SET_MODE;
 
   _delay_us(100);
   
+  if(tps65185_write(VCOM1, 0x04))
+    return -1;
+  if(tps65185_write(VCOM2, 0x01))
+    return -1;
+
   if(!tps65185_write(UPSEQ0, WAVESHARE97UP))
     TPS_POWERUP;
   else
     return -1;
+  
+  _delay_ms(1);
+  VCOM_ON;
+   
+  vscan_start();
+  for (uint16_t i = 0; i < SCREEN_HEIGHT; i++) 
+  {
+    vclock_quick();
+  }
+  vscan_stop();
   
   // no error
   return 0;
@@ -126,7 +141,10 @@ void eink_powerdown(void)
   SET_XSTL;
   eink_set_data(0);
   CLR_CKV;
-  CLR_MODE;
+  SET_MODE;
+
+  VCOM_OFF;
+  _delay_ms(1);
 
   TPS_POWERDOWN;
 }
@@ -136,10 +154,15 @@ void eink_powerdown(void)
 ******************************************************************************/
 void vclock_quick()
 {
-  SET_CKV;
+  CLR_CKV;
+  _delay_us(3);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-  CLR_CKV;
+*/
+  SET_CKV;
+  _delay_us(10);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
@@ -148,6 +171,7 @@ void vclock_quick()
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
 }
 
 /******************************************************************************
@@ -155,12 +179,17 @@ void vclock_quick()
 ******************************************************************************/
 void hclock()
 {
-  //asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+  //_delay_us(1);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
   SET_XCL;
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
+  //_delay_us(1);
   CLR_XCL;
 }
 
@@ -191,6 +220,8 @@ void vscan_write()
   SET_XOE;
   // 5us delay
    //clock_delay_usec(20);
+  _delay_us(6);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
@@ -203,10 +234,11 @@ void vscan_write()
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop;");
+*/
   CLR_XOE;
   CLR_CKV;
   // 200us delay
-  _delay_us(183);
+  _delay_us(200);
 }
 
 /******************************************************************************
@@ -228,7 +260,11 @@ void vscan_bulkwrite()
 void vscan_skip()
 {
   SET_CKV;
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+  _delay_us(1);
+/*
+  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
+       nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
   CLR_CKV;
   _delay_us(97);
 }
@@ -239,7 +275,7 @@ void vscan_skip()
 ******************************************************************************/
 void vscan_stop()
 {
-  CLR_MODE;
+  //CLR_MODE;
   vclock_quick();
   vclock_quick();
   vclock_quick();
@@ -283,16 +319,54 @@ void hscan_stop()
 {
   SET_XSTL;
   // 1us delay
+  _delay_us(1);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/  
   SET_XCL;
   // 1us delay
+  _delay_us(1);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
   CLR_XCL;
   SET_XLE;
   // 1us delay
+  _delay_us(1);
+/*
   asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
        nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+*/
   CLR_XLE;
 }
+
+/******************************************************************************
+* Set some Pixels (1200x825) 4bpp                                             *
+******************************************************************************/
+void set_pixels()
+{
+  uint16_t gate_driver, src_driver;
+
+  vscan_start();
+  
+  for(gate_driver = 0; gate_driver < SCREEN_HEIGHT; gate_driver++)
+  {
+    hscan_start();
+
+    // hscan write
+    for (src_driver = 0; src_driver < (SCREEN_WIDTH / 2); src_driver++)   // SCREEN_WIDTH/2 because 4bpp
+    {
+    // 0xEE = Display wird Heller!
+      eink_set_data(0xAA);
+      hclock();
+    }
+
+    hscan_stop();
+    vscan_write();
+  }
+
+  vscan_stop();
+}
+
