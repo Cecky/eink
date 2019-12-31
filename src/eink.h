@@ -24,9 +24,10 @@
 #include "uart.h"
 #include "tps65185.h"
 
-// dimensions
+// Displaystuff
 #define SCREEN_HEIGHT   825
 #define SCREEN_WIDTH    1200
+#define FRAME_INIT_LEN  21
 
 // commandlines
 #define PORT_XCL    PORTA
@@ -118,62 +119,17 @@
 #define DDR_D7      DDRB
 #define D7          PB7
 
+#define WHITE       0xAA
+#define BLACK       0x55
+
 // prototypes
 void eink_init(void);
 int8_t eink_powerup(void);
 void eink_powerdown(void);
 void eink_set_data(uint8_t data);
 
-
-// streetsign-project stuff
-
-/* Fast vertical clock pulse for gate driver, used during initializations */
-void vclock_quick();
-
-/* Horizontal clock pulse for clocking data into source driver */
-void hclock();
-
-/** Start a new vertical gate driver scan from top.
- * Note: Does not clear any previous bits in the shift register,
- *       so you should always scan through the whole display before
- *       starting a new scan.
- */
-void vscan_start();
-
-/* Waveform for strobing a row of data onto the display.
- * Attempts to minimize the leaking of color to other rows by having
- * a long idle period after a medium-length strobe period.
- */
-void vscan_write();
-
-/* Waveform used when clearing the display. Strobes a row of data to the
- * screen, but does not mind some of it leaking to other rows.
- */
-void vscan_bulkwrite();
-
-/* Waveform for skipping a vertical row without writing anything.
- * Attempts to minimize the amount of change in any row.
- */
-void vscan_skip();
-
-/* Stop the vertical scan. The significance of this escapes me, but it seems
- * necessary or the next vertical scan may be corrupted.
- */
-void vscan_stop();
-
-/* Start updating the source driver data (from left to right). */
-void hscan_start();
-
-/* Write data to the horizontal row. */
-void hscan_write(const uint8_t *data, int count);
-
-/* Finish and transfer the row to the source drivers.
- * Does not set the output enable, so the drivers are not yet active. */
-void hscan_stop();
-
-
-
-
-
-
-void set_pixels();
+void eink_send_row(uint8_t *data);
+void eink_vclock_quick(void);
+void eink_start_scan(void);
+void eink_clear(void);
+void eink_draw_line();

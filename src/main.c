@@ -1,6 +1,9 @@
 /******************************************************************************
 * Hopefully driving Waveshare 9.7" E-Ink                                      *
 *                                                                             *
+* used hardware:                                                              *
+* ATmega324a @14.745600 MHz                                                   *
+*                                                                             *
 * Copyright (C) 2019  Cecky                                                   *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
@@ -55,10 +58,11 @@ int main(void)
         eink_powerup();
         printf("PowerUp\r\n");
       }
-      
-      if(cmd == '2')
+
+      //------------------ eink-test --------------------------------------
+      if(cmd == '4')
       {
-        printf("Set some pixels\r\n");
+        printf("EPD Clear\r\n");
         if(eink_powerup()) 
         {
           printf("i2c error occured\r\naborteed\r\n");
@@ -67,9 +71,25 @@ int main(void)
         else
         {
           printf("PowerUp\r\n");
-          _delay_ms(1);
-          set_pixels();
-          _delay_ms(1);
+          eink_clear();
+          eink_powerdown();
+          printf("PowerDown\r\n");
+          printf("Done\r\n");
+        }
+      }
+
+      if(cmd == '5')
+      {
+        printf("EPD SetPixels\r\n");
+        if(eink_powerup()) 
+        {
+          printf("i2c error occured\r\naborteed\r\n");
+          eink_powerdown();
+        }
+        else
+        {
+          printf("PowerUp\r\n");
+          eink_draw_line();
           eink_powerdown();
           printf("PowerDown\r\n");
           printf("Done\r\n");

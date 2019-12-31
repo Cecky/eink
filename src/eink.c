@@ -22,7 +22,20 @@
 #include "eink.h"
 
 /******************************************************************************
-* Configure all gpios                                                         *
+* some global variables                                                       *
+******************************************************************************/
+uint8_t line_data[SCREEN_WIDTH / 4];      //line data buffer
+const uint8_t wave_init[FRAME_INIT_LEN]=
+{
+  BLACK,BLACK,BLACK,BLACK,BLACK,
+  WHITE,WHITE,WHITE,WHITE,WHITE,
+  BLACK,BLACK,BLACK,BLACK,BLACK,
+  WHITE,WHITE,WHITE,WHITE,WHITE,
+  0,
+};
+
+/******************************************************************************
+* configure all gpios                                                         *
 ******************************************************************************/
 void eink_init(void)
 {
@@ -52,10 +65,15 @@ void eink_init(void)
   eink_set_data(0);
   CLR_CKV;
   SET_MODE;
+
+  for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+  {
+    line_data[i] = 0;
+  }
 }
 
 /******************************************************************************
-* Write 1 databyte to the corresponding data-pins                             *
+* write 1 databyte to the corresponding data-pins                             *
 ******************************************************************************/
 void eink_set_data(uint8_t data)
 {
@@ -89,23 +107,12 @@ void eink_set_data(uint8_t data)
 }
 
 /******************************************************************************
-* Powerup all rails in the correct order                                      *
+* powerup all rails in the correct order                                      *
 * return:  0    succes                                                        *
 *          -1   TPS65185 is not responding                                    *
 ******************************************************************************/
 int8_t eink_powerup(void)
 {
-  //set control lines
-  CLR_XLE;
-  CLR_XOE;
-  CLR_XCL;
-  SET_XSTL;
-  eink_set_data(0);
-  CLR_CKV;
-  SET_MODE;
-
-  _delay_us(100);
-  
   if(tps65185_write(VCOM1, 0x04))
     return -1;
   if(tps65185_write(VCOM2, 0x01))
@@ -115,32 +122,38 @@ int8_t eink_powerup(void)
     TPS_POWERUP;
   else
     return -1;
+
+  _delay_us(100);
   
+  //set control lines
+  CLR_XLE;
+  CLR_XOE;
+  CLR_XCL;
+  SET_XSTL;
+  eink_set_data(0);
+  SET_CKV;
+  SET_SPV;
+  SET_MODE;
+
   _delay_ms(1);
   VCOM_ON;
-   
-  vscan_start();
-  for (uint16_t i = 0; i < SCREEN_HEIGHT; i++) 
-  {
-    vclock_quick();
-  }
-  vscan_stop();
   
   // no error
   return 0;
 }
 
 /******************************************************************************
-* Powerdown all rails in the correct order                                    *
+* powerdown all rails in the correct order                                    *
 ******************************************************************************/
 void eink_powerdown(void)
 {
   CLR_XLE;
   CLR_XOE;
   CLR_XCL;
-  SET_XSTL;
+  CLR_XSTL;
   eink_set_data(0);
   CLR_CKV;
+  CLR_SPV;
   SET_MODE;
 
   VCOM_OFF;
@@ -150,223 +163,116 @@ void eink_powerdown(void)
 }
 
 /******************************************************************************
-* Fast vertical clock pulse for gate driver, used during initializations      *
+* send datarow to display                                                     *
 ******************************************************************************/
-void vclock_quick()
+void eink_send_row(uint8_t *data)
 {
-  CLR_CKV;
-  _delay_us(3);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
-  SET_CKV;
-  _delay_us(10);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
-}
-
-/******************************************************************************
-* Horizontal clock pulse for clocking data into source driver                 *
-******************************************************************************/
-void hclock()
-{
-  //_delay_us(1);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
+  SET_XLE; 
   SET_XCL;
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
-  //_delay_us(1);
   CLR_XCL;
-}
-
-/******************************************************************************
-* Start a new vertical gate driver scan from top.                             *
-* Note: Does not clear any previous bits in the shift register,               *
-*       so you should always scan through the whole display before            *
-*       starting a new scan.                                                  *
-******************************************************************************/
-void vscan_start()
-{
-    SET_MODE;
-    vclock_quick();
-    CLR_SPV;
-    vclock_quick();
-    SET_SPV;
-    vclock_quick();
-}
-
-/******************************************************************************
-* Waveform for strobing a row of data onto the display.                       *
-* Attempts to minimize the leaking of color to other rows by having           *
-* a long idle period after a medium-length strobe period.                     *
-******************************************************************************/
-void vscan_write()
-{
-  SET_CKV;
-  SET_XOE;
-  // 5us delay
-   //clock_delay_usec(20);
-  _delay_us(6);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop;");
-*/
-  CLR_XOE;
-  CLR_CKV;
-  // 200us delay
-  _delay_us(200);
-}
-
-/******************************************************************************
-* Waveform used when clearing the display. Strobes a row of data to the       *
-* screen, but does not mind some of it leaking to other rows.                 *
-******************************************************************************/
-void vscan_bulkwrite()
-{
-  SET_CKV;
-  _delay_us(15);
-  CLR_CKV;
-  _delay_us(195);
-}
-
-/******************************************************************************
-* Waveform for skipping a vertical row without writing anything.              *
-* Attempts to minimize the amount of change in any row.                       *
-******************************************************************************/
-void vscan_skip()
-{
-  SET_CKV;
-  _delay_us(1);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
-  CLR_CKV;
-  _delay_us(97);
-}
-
-/******************************************************************************
-* Stop the vertical scan. The significance of this escapes me, but it seems   *
-* necessary or the next vertical scan may be corrupted.                       *
-******************************************************************************/
-void vscan_stop()
-{
-  //CLR_MODE;
-  vclock_quick();
-  vclock_quick();
-  vclock_quick();
-  vclock_quick();
-  vclock_quick();
-}
-
-/******************************************************************************
-* Start updating the source driver data (from left to right).                 *
-******************************************************************************/
-void hscan_start()
-{
-  /* Disable latching and output enable while we are modifying the row. */
-  CLR_XLE;
-  CLR_XOE;
-
-  /* The start pulse should remain low for the duration of the row. */
-  CLR_XSTL;
-}
-
-/******************************************************************************
-* Write data to the horizontal row.                                           *
-******************************************************************************/
-void hscan_write(const uint8_t *data, int count)
-{
-  while (count--)
-  {
-    /* Set the next byte on the data pins */
-    eink_set_data(*data++);
-
-    /* Give a clock pulse to the shift register */
-    hclock();
-  }
-}
-
-/******************************************************************************
-* Finish and transfer the row to the source drivers.                          *
-* Does not set the output enable, so the drivers are not yet active.          *
-******************************************************************************/
-void hscan_stop()
-{
-  SET_XSTL;
-  // 1us delay
-  _delay_us(1);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/  
   SET_XCL;
-  // 1us delay
-  _delay_us(1);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
   CLR_XCL;
-  SET_XLE;
-  // 1us delay
-  _delay_us(1);
-/*
-  asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; \
-       nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
-*/
+
   CLR_XLE;
-}
-
-/******************************************************************************
-* Set some Pixels (1200x825) 4bpp                                             *
-******************************************************************************/
-void set_pixels()
-{
-  uint16_t gate_driver, src_driver;
-
-  vscan_start();
+  SET_XCL;
+  CLR_XCL;
+  SET_XCL;
+  CLR_XCL;
   
-  for(gate_driver = 0; gate_driver < SCREEN_HEIGHT; gate_driver++)
+  SET_XOE;
+  
+  CLR_XSTL;                                          
+  
+  for (uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
   {
-    hscan_start();
-
-    // hscan write
-    for (src_driver = 0; src_driver < (SCREEN_WIDTH / 2); src_driver++)   // SCREEN_WIDTH/2 because 4bpp
-    {
-    // 0xEE = Display wird Heller!
-      eink_set_data(0xAA);
-      hclock();
-    }
-
-    hscan_stop();
-    vscan_write();
+    eink_set_data(data[i]);
+    SET_XCL;
+    CLR_XCL;
   }
+  
+  SET_XSTL;
+  
+  SET_XCL;
+  CLR_XCL;
+  SET_XCL;
+  CLR_XCL;
 
-  vscan_stop();
+  CLR_CKV;
+  CLR_XOE;
+  
+  SET_XCL;
+  CLR_XCL;
+  SET_XCL;
+  CLR_XCL;
+  
+  SET_CKV;     
 }
 
+/******************************************************************************
+* fast vertical clock pulse for gate driver, used during initializations      *
+******************************************************************************/
+void eink_vclock_quick(void)
+{
+  for (uint8_t i = 0; i < 2; i++)
+  {
+    CLR_CKV;
+    SET_CKV;
+  }
+}
+
+/******************************************************************************
+* start a new vertical gate driver scan from top.                             *
+******************************************************************************/
+void eink_start_scan(void)
+{ 
+  eink_vclock_quick();
+  CLR_SPV;
+  eink_vclock_quick();
+  SET_SPV;
+  eink_vclock_quick();
+}
+
+/******************************************************************************
+* clear display (Black<->White)                                               *
+******************************************************************************/
+void eink_clear(void)
+{
+  for(uint8_t frame = 0; frame < FRAME_INIT_LEN; frame++)			
+  {
+    eink_start_scan();
+    for(uint16_t line = 0; line < SCREEN_HEIGHT; line++)
+    {
+      for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+      {
+        line_data[i] = wave_init[frame];
+      }
+      eink_send_row(line_data);
+    }
+  }
+}
+
+/******************************************************************************
+* draw linepattern                                                            *
+*                                                                             *
+* note: for some reason only after the clear cycle the linepattern starts     *
+*       from the top.                                                         *
+******************************************************************************/
+void eink_draw_line()
+{
+  eink_clear();
+  for(uint8_t frame = 0; frame < 4; frame++)
+  {
+    eink_start_scan();
+    for(uint16_t line = 0; line < SCREEN_HEIGHT; line++)
+    {
+      for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+      {
+        if(!(line % 100)) 
+          line_data[i] = BLACK;
+        else
+          line_data[i] = WHITE;
+      }
+      eink_send_row(line_data);
+    }
+  }
+}
