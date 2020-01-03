@@ -129,9 +129,9 @@ int8_t eink_powerup(void)
   CLR_XLE;
   CLR_XOE;
   CLR_XCL;
-  SET_XSTL;
+  CLR_XSTL;
   eink_set_data(0);
-  SET_CKV;
+  CLR_CKV;
   SET_SPV;
   SET_MODE;
 
@@ -164,6 +164,9 @@ void eink_powerdown(void)
 
 /******************************************************************************
 * send datarow to display                                                     *
+*                                                                             *
+* note: doesn't look similar to the logicanalyser readout but works fine.     *
+*       further investigation needed!                                         *
 ******************************************************************************/
 void eink_send_row(uint8_t *data)
 {
@@ -213,6 +216,7 @@ void eink_send_row(uint8_t *data)
 ******************************************************************************/
 void eink_vclock_quick(void)
 {
+  //working so far
   for (uint8_t i = 0; i < 2; i++)
   {
     CLR_CKV;
@@ -252,14 +256,36 @@ void eink_clear(void)
 }
 
 /******************************************************************************
-* draw linepattern                                                            *
+* write sync-frame                                                            *
 *                                                                             *
-* note: for some reason only after the clear cycle the linepattern starts     *
-*       from the top.                                                         *
+* note: only immediately after the syncframe the following                    *
+* frames start from the top                                                   *
 ******************************************************************************/
-void eink_draw_line()
+void eink_sync(void)
 {
-  eink_clear();
+  eink_start_scan();
+  for(uint16_t line = 0; line < SCREEN_HEIGHT; line++)
+  {
+    for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+    {
+      line_data[i] = 0;
+    }
+    eink_send_row(line_data);
+  }
+}
+
+/******************************************************************************
+* draw linepattern                                                            *
+******************************************************************************/
+void eink_draw_line(uint8_t clear)
+{
+  eink_sync();
+
+  if(clear)
+  {
+    eink_clear();
+  }
+
   for(uint8_t frame = 0; frame < 4; frame++)
   {
     eink_start_scan();
@@ -268,9 +294,11 @@ void eink_draw_line()
       for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
       {
         if(!(line % 100)) 
-          line_data[i] = BLACK;
+          //line_data[i] = BLACK;
+          line_data[i] = DOTTED;
+
         else
-          line_data[i] = WHITE;
+          line_data[i] = 0;
       }
       eink_send_row(line_data);
     }

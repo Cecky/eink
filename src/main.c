@@ -89,7 +89,7 @@ int main(void)
         else
         {
           printf("PowerUp\r\n");
-          eink_draw_line();
+          eink_draw_line(FALSE);
           eink_powerdown();
           printf("PowerDown\r\n");
           printf("Done\r\n");

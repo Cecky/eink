@@ -28,6 +28,8 @@
 #define SCREEN_HEIGHT   825
 #define SCREEN_WIDTH    1200
 #define FRAME_INIT_LEN  21
+#define TRUE            1
+#define FALSE           0
 
 // commandlines
 #define PORT_XCL    PORTA
@@ -121,6 +123,7 @@
 
 #define WHITE       0xAA
 #define BLACK       0x55
+#define DOTTED      0x11
 
 // prototypes
 void eink_init(void);
@@ -132,4 +135,5 @@ void eink_send_row(uint8_t *data);
 void eink_vclock_quick(void);
 void eink_start_scan(void);
 void eink_clear(void);
-void eink_draw_line();
+void eink_sync(void);
+void eink_draw_line(uint8_t clear);
