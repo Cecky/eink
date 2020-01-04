@@ -95,6 +95,24 @@ int main(void)
           printf("Done\r\n");
         }
       }
+
+      if(cmd == '6')
+      {
+        printf("EPD Checkerboard\r\n");
+        if(eink_powerup()) 
+        {
+          printf("i2c error occured\r\naborteed\r\n");
+          eink_powerdown();
+        }
+        else
+        {
+          printf("PowerUp\r\n");
+          eink_checkerboard(100,100);
+          eink_powerdown();
+          printf("PowerDown\r\n");
+          printf("Done\r\n");
+        }
+      }
     }
   }
 }

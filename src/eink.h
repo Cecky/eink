@@ -30,6 +30,9 @@
 #define FRAME_INIT_LEN  21
 #define TRUE            1
 #define FALSE           0
+#define WHITE           0xAA
+#define BLACK           0x55
+#define DOTTED          0x11
 
 // commandlines
 #define PORT_XCL    PORTA
@@ -121,19 +124,15 @@
 #define DDR_D7      DDRB
 #define D7          PB7
 
-#define WHITE       0xAA
-#define BLACK       0x55
-#define DOTTED      0x11
 
 // prototypes
 void eink_init(void);
 int8_t eink_powerup(void);
 void eink_powerdown(void);
 void eink_set_data(uint8_t data);
-
 void eink_send_row(uint8_t *data);
-void eink_vclock_quick(void);
 void eink_start_scan(void);
 void eink_clear(void);
 void eink_sync(void);
 void eink_draw_line(uint8_t clear);
+void eink_checkerboard(uint16_t x, uint16_t y);

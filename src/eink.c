@@ -127,9 +127,9 @@ int8_t eink_powerup(void)
   
   //set control lines
   CLR_XLE;
-  CLR_XOE;
+  SET_XOE;
   CLR_XCL;
-  CLR_XSTL;
+  SET_XSTL;
   eink_set_data(0);
   CLR_CKV;
   SET_SPV;
@@ -171,19 +171,8 @@ void eink_powerdown(void)
 void eink_send_row(uint8_t *data)
 {
   SET_XLE; 
-  SET_XCL;
-  CLR_XCL;
-  SET_XCL;
-  CLR_XCL;
-
   CLR_XLE;
-  SET_XCL;
-  CLR_XCL;
-  SET_XCL;
-  CLR_XCL;
-  
   SET_XOE;
-  
   CLR_XSTL;                                          
   
   for (uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
@@ -194,48 +183,34 @@ void eink_send_row(uint8_t *data)
   }
   
   SET_XSTL;
-  
-  SET_XCL;
-  CLR_XCL;
-  SET_XCL;
-  CLR_XCL;
-
   CLR_CKV;
   CLR_XOE;
-  
-  SET_XCL;
-  CLR_XCL;
-  SET_XCL;
-  CLR_XCL;
-  
   SET_CKV;     
-}
-
-/******************************************************************************
-* fast vertical clock pulse for gate driver, used during initializations      *
-******************************************************************************/
-void eink_vclock_quick(void)
-{
-  //working so far
-  for (uint8_t i = 0; i < 2; i++)
-  {
-    CLR_CKV;
-    SET_CKV;
-  }
 }
 
 /******************************************************************************
 * start a new vertical gate driver scan from top.                             *
 ******************************************************************************/
 void eink_start_scan(void)
-{ 
-  eink_vclock_quick();
+{
+  SET_CKV;
+  _delay_us(5);
   CLR_SPV;
-  eink_vclock_quick();
-  SET_SPV;
-  eink_vclock_quick();
-}
+  _delay_us(5);
+  CLR_CKV;
 
+  _delay_us(3);
+  SET_CKV;
+  _delay_us(5);
+  SET_SPV;
+  _delay_us(5);
+  CLR_CKV;
+
+  _delay_us(3);
+  SET_CKV;
+  _delay_us(11);
+  CLR_CKV;
+}
 /******************************************************************************
 * clear display (Black<->White)                                               *
 ******************************************************************************/
@@ -300,6 +275,65 @@ void eink_draw_line(uint8_t clear)
         else
           line_data[i] = 0;
       }
+      eink_send_row(line_data);
+    }
+  }
+}
+
+/******************************************************************************
+* generate a small checkerboard at specific location                          *
+******************************************************************************/
+void eink_checkerboard(uint16_t x, uint16_t y)
+{
+  uint8_t cnt = 0;
+  uint8_t cb_linepattern_1[SCREEN_WIDTH / 4];
+  uint8_t cb_linepattern_2[SCREEN_WIDTH / 4];
+
+  //Set values
+  for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+  {
+    cb_linepattern_1[i] = WHITE;
+    cb_linepattern_2[i] = WHITE;
+  }
+
+  cb_linepattern_1[100] = BLACK;
+  cb_linepattern_1[101] = BLACK;
+  cb_linepattern_1[104] = BLACK;
+  cb_linepattern_1[105] = BLACK;
+  cb_linepattern_1[108] = BLACK;
+  cb_linepattern_1[109] = BLACK;
+  cb_linepattern_1[112] = BLACK;
+  cb_linepattern_1[113] = BLACK;
+
+  cb_linepattern_2[102] = BLACK;
+  cb_linepattern_2[103] = BLACK;
+  cb_linepattern_2[106] = BLACK;
+  cb_linepattern_2[107] = BLACK;
+  cb_linepattern_2[110] = BLACK;
+  cb_linepattern_2[111] = BLACK;
+  cb_linepattern_2[114] = BLACK;
+  cb_linepattern_2[115] = BLACK;
+
+  eink_sync();
+  for(uint8_t frame = 0; frame < 4; frame++)
+  {
+    cnt = 0;
+    eink_start_scan();
+    for(uint16_t line = 0; line < SCREEN_HEIGHT; line++)
+    {
+      for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+      {
+        if((line >= y) && (line < (y + 64)))
+        {
+          if( (cnt/8)%2 )
+            line_data[i] = cb_linepattern_1[i];
+          else
+            line_data[i] = cb_linepattern_2[i];
+        }
+        else
+          line_data[i] = 0;
+      }
+      if((line >= y) && (line < (y + 64))) cnt++;
       eink_send_row(line_data);
     }
   }
