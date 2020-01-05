@@ -20,9 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <util/delay.h>
 #include "uart.h"
 #include "tps65185.h"
+#include "fonts.h"
 
 // Displaystuff
 #define SCREEN_HEIGHT   825
@@ -124,7 +126,6 @@
 #define DDR_D7      DDRB
 #define D7          PB7
 
-
 // prototypes
 void eink_init(void);
 int8_t eink_powerup(void);
@@ -136,3 +137,4 @@ void eink_clear(void);
 void eink_sync(void);
 void eink_draw_line(uint8_t clear);
 void eink_checkerboard(uint16_t x, uint16_t y);
+void eink_print_char(uint16_t x, uint16_t y, uint8_t c);

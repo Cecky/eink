@@ -25,6 +25,7 @@
 * some global variables                                                       *
 ******************************************************************************/
 uint8_t line_data[SCREEN_WIDTH / 4];      //line data buffer
+
 const uint8_t wave_init[FRAME_INIT_LEN]=
 {
   BLACK,BLACK,BLACK,BLACK,BLACK,
@@ -334,6 +335,60 @@ void eink_checkerboard(uint16_t x, uint16_t y)
           line_data[i] = 0;
       }
       if((line >= y) && (line < (y + 64))) cnt++;
+      eink_send_row(line_data);
+    }
+  }
+}
+
+/******************************************************************************
+* print character at a specific coordinate (anker = top-left)                 *
+*                                                                             *
+* for testing used 5x8 font. works but it's definetly to small!               *
+******************************************************************************/
+void eink_print_char(uint16_t x, uint16_t y, uint8_t c)
+{
+  uint16_t data_byte = 0;
+  uint8_t data_bit = 0;
+  uint8_t line_cnt = 0;
+  uint8_t data = 0;
+  uint16_t x_pos = 0;
+
+  eink_sync();
+  for(uint8_t frame = 0; frame < 4; frame++)
+  {
+    line_cnt = 0;
+    eink_start_scan();
+
+    for(uint16_t line = 0; line < SCREEN_HEIGHT; line++)
+    {
+      x_pos = x;
+
+      // clear linebuffer
+      for(uint16_t i = 0; i < SCREEN_WIDTH / 4; i++)
+      {
+        line_data[i] = 0;
+      }
+
+      if((line >= y) && (line < (y + FONT_HEIGHT)))
+      {
+        data = pgm_read_byte(&font_PGM[(c-FONT_START)*(8*FONT_HEIGHT/8)+line_cnt]);
+
+        for(uint8_t i = 0; i < FONT_WIDTH; i++)
+        {
+          data_byte = x_pos / 4;
+          data_bit = (x_pos % 4) * 2;
+
+          if(data & (0x10 >> i))
+          {
+            line_data[data_byte] |= (0x40 >> data_bit);
+          }
+
+          x_pos++;
+        }
+      
+        line_cnt++;
+      }
+      
       eink_send_row(line_data);
     }
   }

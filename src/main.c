@@ -113,6 +113,26 @@ int main(void)
           printf("Done\r\n");
         }
       }
+
+      if(cmd == '7')
+      {
+        printf("EPD Charcter\r\n");
+        if(eink_powerup()) 
+        {
+          printf("i2c error occured\r\naborteed\r\n");
+          eink_powerdown();
+        }
+        else
+        {
+          printf("PowerUp\r\n");
+          eink_print_char(200,50, 'H');
+          eink_powerdown();
+          printf("PowerDown\r\n");
+          printf("Done\r\n");
+        }
+      }
+
+
     }
   }
 }
